@@ -70,8 +70,6 @@ for (m in models) {
   mle_all[[m]] <- mle[[m]]$optim$bestval
 }
 
-saveRDS(mle, paste0('output/mle-', true_mod, '.rds'))
-
 # get priors for each model
 priors <- list()
 for (m in models) {
@@ -88,8 +86,6 @@ for (m in models) {
   idx <- sample((burnin+1):niter, nsamp, replace=TRUE)
   mcmc_all[[m]] <- mcmc_out[[m]]$samples[idx,] 
 }  
-
-saveRDS(mcmc, paste0('output/mcmc-', true_mod, '.rds'))
 
 np <- list('st'=3, 'nsloc'=4, 'nslocscale'=5) # we need the number of parameters for AIC and BIC
 
