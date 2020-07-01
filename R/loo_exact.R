@@ -21,12 +21,18 @@ source('R/model-selection.R')
 set.seed(1000)
 
 ## set up experiment
-dat_len <- 100
+dat_len <- 100 # pseudodata length
+
+# MCMC and posterior analysis parameters
+burnin <- 1e5 # length of burnin
+niter <- 5e5 # number of MCMC iterations
+nsamp <- 1e5 # number of posterior samples for LOO estimation
 
 # set true model parameters
 # get job array ID and look up if the true model is stationary or nonstationary
-aid <- as.numeric(Sys.getenv('PBS_ARRAYID'))
-true_mod <- c('st', 'nsloc')
+#aid <- as.numeric(Sys.getenv('PBS_ARRAYID'))
+#true_mod <- c('st', 'nsloc')[aid]
+true_mod <- 'nsloc'
 
 loc <- 800 + 0.6*(1:dat_len)*(true_mod == 'nsloc') # location
 scale <- 25 # scale
@@ -50,14 +56,6 @@ parnames[['nslocscale']] <- c('loc1', 'loc2', 'scale1', 'scale2', 'shape')
 lower_bd <- c('loc'=0, 'loc1'=0, 'loc2'=-50, 'scale'=0, 'scale1'=0, 'scale2'=-20, 'shape'=-2)
 upper_bd <- c('loc'=2000, 'loc1'=2000, 'loc2'=50, 'scale'=75, 'scale1'=75, 'scale2'=20, 'shape'=2)
 
-# run DEoptim to identify the MLE for each model
-mle <- list()
-for (m in models) {
-  mle[[m]] <- DEoptim::DEoptim(neg_log_lik_gev, parnames=parnames[[m]], dat=dat, type=m,
-                               lower=lower_bd[parnames[[m]]], upper=upper_bd[parnames[[m]]],
-                               control=DEoptim.control(itermax=2000, NP=25*length(parnames[[m]]), trace=FALSE))
-}
-
 # get priors for each model
 priors <- list()
 for (m in models) {
@@ -65,20 +63,24 @@ for (m in models) {
 }
 
 # set up cluster for fitting each LOO model
-cl <- makeCluster(4)
+cl <- makeCluster(detectCores())
 registerDoParallel(cl)
-loo_out <- foreach(i=1:4, .packages=c('truncnorm', 'extRemes')) %dopar% {
-  # run MCMC for the models without the ith data point, which is held out
-  mcmc_out <- list()
-  samp <- list()
+# loop over each time point and fit models for each time point within the loop
+loo_out <- foreach(i=1:4, .packages=c('truncnorm', 'extRemes', 'DEoptim')) %dopar% {
+  # initialize lists for storage across models for this time
   dens <- list()
   for (m in c('st', 'nsloc', 'nslocscale')) {
+    mle <- DEoptim::DEoptim(neg_log_lik_gev, parnames=parnames[[m]], dat=dat[-i], type=m,
+                                 lower=lower_bd[parnames[[m]]], upper=upper_bd[parnames[[m]]],
+                                 control=DEoptim.control(itermax=2000, NP=25*length(parnames[[m]]), trace=FALSE))
+
     acc_rate <- 0.234 + ((0.44 - 0.234) / length(parnames[[m]]))
-    mcmc_out[[m]] <- adaptMCMC::MCMC(log_post_gev, n=5e5, init=mle[[m]]$optim$bestmem, adapt=TRUE, acc.rate=acc_rate, 
+    mcmc_out <- adaptMCMC::MCMC(log_post_gev, n=niter, init=mle$optim$bestmem, adapt=TRUE, acc.rate=acc_rate, 
                   gamma=0.67, list=TRUE, parnames=parnames[[m]], dat=dat[-i], type=m, priors=priors[[m]])
-    samp[[m]] <- mcmc_out[[m]]$samples[sample(1:nrow(mcmc_out[[m]]$samples[(1e5+1):5e5]), 1e5, replace=TRUE),] # sub-sample MCMC output
+    idx <- sample((burnin+1):niter, nsamp, replace=TRUE) # sample post-burnin indices
+    samp <- mcmc_out$samples[idx,] # sub-sample MCMC output
     # compute the log-likelihood for the held-out data point and for each MCMC sample
-    dens[[m]] <- apply(samp[[m]], 1, log_lik_gev, type=m, parnames=colnames(samp[[m]]), dat=dat[i])
+    dens[[m]] <- apply(samp, 1, log_lik_gev, type=m, parnames=colnames(samp), dat=dat[i])
   }
   
   unlist(lapply(dens, function(l) log(mean(exp(l)))))
