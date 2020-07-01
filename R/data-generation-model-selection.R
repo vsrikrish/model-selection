@@ -22,6 +22,12 @@ set.seed(1000)
 
 ## set up experiment
 dat_len <- 100
+
+# MCMC settings
+burnin <- 1e5 # length of burnin
+niter <- 5e5 # number of MCMC samples
+nsamp <- 1e5 # number of posterior samples for analysis
+
 # generate pseudodata
 trend <- (1:(dat_len*365))*1.5/365
 per_semi <- sin(2*pi*(1:(dat_len*365))/180 + 90)*80
@@ -75,10 +81,10 @@ mcmc_out <- list()
 mcmc_all <- list()
 for (m in c('st', 'nsloc', 'nslocscale')) {
   acc_rate <- 0.234 + ((0.44 - 0.234) / length(parnames[[m]]))
-  mcmc_out[[m]] <- adaptMCMC::MCMC(log_post_gev, n=1e5, init=mle[[m]]$optim$bestmem, adapt=TRUE, acc.rate=acc_rate, 
+  mcmc_out[[m]] <- adaptMCMC::MCMC(log_post_gev, n=niter, init=mle[[m]]$optim$bestmem, adapt=TRUE, acc.rate=acc_rate, 
                                    gamma=0.67, list=TRUE, parnames=parnames[[m]], dat=dat, type=m, priors=priors[[m]])
-  mcmc_all[[m]] <- mcmc_out[[m]]$samples[(5e4+1):1e5,] # just assume burnin is half the run for the time being
-  
+  idx <- sample((burnin+1):niter, nsamp, replace=TRUE)
+  mcmc_all[[m]] <- mcmc_out[[m]]$samples[idx,] 
 }  
 
 saveRDS(mcmc, paste0('output/mcmc-', true_mod, '.rds'))
