@@ -66,7 +66,7 @@ for (m in models) {
 cl <- makeCluster(detectCores())
 registerDoParallel(cl)
 # loop over each time point and fit models for each time point within the loop
-loo_out <- foreach(i=1:4, .packages=c('truncnorm', 'extRemes', 'DEoptim')) %dopar% {
+loo_out <- foreach(i=1:dat_len, .packages=c('truncnorm', 'extRemes', 'DEoptim')) %dopar% {
   # initialize lists for storage across models for this time
   dens <- list()
   for (m in c('st', 'nsloc', 'nslocscale')) {
