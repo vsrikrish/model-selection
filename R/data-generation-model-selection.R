@@ -28,6 +28,8 @@ burnin <- 1e5 # length of burnin
 niter <- 5e5 # number of MCMC samples
 nsamp <- 1e5 # number of posterior samples for analysis
 
+models <- c('st', 'nsloc', 'nslocscale')
+
 # generate pseudodata
 trend <- (1:(dat_len*365))*1.5/365
 per_semi <- sin(2*pi*(1:(dat_len*365))/180 + 90)*80
@@ -79,7 +81,7 @@ for (m in models) {
 # run MCMC for each model
 mcmc_out <- list()
 mcmc_all <- list()
-for (m in c('st', 'nsloc', 'nslocscale')) {
+for (m in models) {
   acc_rate <- 0.234 + ((0.44 - 0.234) / length(parnames[[m]]))
   mcmc_out[[m]] <- adaptMCMC::MCMC(log_post_gev, n=niter, init=mle[[m]]$optim$bestmem, adapt=TRUE, acc.rate=acc_rate, 
                                    gamma=0.67, list=TRUE, parnames=parnames[[m]], dat=dat, type=m, priors=priors[[m]])
