@@ -33,10 +33,9 @@ models <- c('st', 'nsloc', 'nslocscale')
 # set true model parameters
 # get job array ID and look up if the true model is stationary or nonstationary
 aid <- as.numeric(Sys.getenv('PBS_ARRAYID'))
-true_mod <- c('st', 'nsloc')
+true_mod <- c('st', 'nsloc')[aid]
 
 loc <- 800 + 0.6*(1:dat_len)*(true_mod == 'nsloc') # location
-loc <- 800 # location
 scale <- 25 # scale
 shape <- 0.6 # shape
 
