@@ -30,9 +30,8 @@ nsamp <- 1e5 # number of posterior samples for LOO estimation
 
 # set true model parameters
 # get job array ID and look up if the true model is stationary or nonstationary
-#aid <- as.numeric(Sys.getenv('PBS_ARRAYID'))
-#true_mod <- c('st', 'nsloc')[aid]
-true_mod <- 'nsloc'
+aid <- as.numeric(Sys.getenv('PBS_ARRAYID'))
+true_mod <- c('st', 'nsloc')[aid]
 
 loc <- 800 + 0.6*(1:dat_len)*(true_mod == 'nsloc') # location
 scale <- 25 # scale
