@@ -1,10 +1,10 @@
 #####################################################################
-# perfect-model-selection.R                                         #
-#   This file generates data from a known GEV distribution. It then #
-#   finds the maximum likelihood estimates and does Bayesian        #
-#   inversion using Markov Chain Monte Carlo (MCMC) for a few       #
-#   different GEV structureas. Various model selection criteria are # 
-#   then calculated for each model.                                 #
+# data-generation-model-selection.R                                 #
+#   This file generates data from a stochastic data generating      #
+#   process distribution. It then finds the maximum likelihood      #
+#   estimates and does Bayesian inversion using Markov Chain Monte  #
+#   Carlo (MCMC) for a few different GEV structureas. Various model #
+#   selection criteria are then calculated for each model.          #
 #####################################################################
 
 ## load packages
