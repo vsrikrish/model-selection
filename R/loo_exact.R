@@ -28,17 +28,24 @@ burnin <- 1e5 # length of burnin
 niter <- 5e5 # number of MCMC iterations
 nsamp <- 1e5 # number of posterior samples for LOO estimation
 
-# set true model parameters
-# get job array ID and look up if the true model is stationary or nonstationary
-aid <- as.numeric(Sys.getenv('PBS_ARRAYID'))
-true_mod <- c('st', 'nsloc')[aid]
-
-loc <- 800 + 0.6*(1:dat_len)*(true_mod == 'nsloc') # location
-scale <- 25 # scale
-shape <- 0.6 # shape
+models <- c('st', 'nsloc', 'nslocscale')
 
 # generate pseudodata
-dat <- extRemes::revd(n=dat_len, loc=loc, scale=scale, shape=shape, type='GEV')
+trend <- (1:(dat_len*365))*1.5/365
+per_semi <- sin(2*pi*(1:(dat_len*365))/180 + 90)*80
+per_ann <- sin(2*pi*(1:(dat_len*365))/360 - 45)*300
+per_all <- per_semi + per_ann + trend
+# generate white noise from AR process
+wn <- numeric(dat_len*365)
+set.seed(1000)
+wn[1] <- 25
+for (t in 2:(100*365)) {
+  wn[t] = wn[t-1]*0.6 + rnorm(1, mean=0, sd=150)
+}
+dat_all <- per_all + wn
+# find annual maxima from the pseudodata
+dat_m <- matrix(dat_all, nrow=365)
+dat <- apply(dat_m, 2, max)
 
 ## set vector of parameter names
 parnames_all <- c('loc', 'loc1', 'loc2', 'scale', 'scale1', 'scale2', 'shape')
@@ -86,4 +93,4 @@ loo_out <- foreach(i=1:dat_len, .packages=c('truncnorm', 'extRemes', 'DEoptim'))
 }
 stopCluster(cl)
 
-saveRDS(plyr::ldply(loo_out), paste0('output/loo_exact-', true_mod, '.rds'))
+saveRDS(plyr::ldply(loo_out), paste0('output/loo_exact.rds'))
