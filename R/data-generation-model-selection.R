@@ -11,11 +11,14 @@
 library(extRemes) # GEV random number generation and density
 library(DEoptim) # identify the MLE using differential evolution
 library(adaptMCMC) # run the MCMC chains
+library(ggplot2) # for plotting data and results
 
 ## load scripts
 source('R/gev-functions.R')
 source('R/gev-priors.R')
 source('R/model-selection.R')
+
+loo_comp <- TRUE # do we want to load exact LOO results for comparison?
 
 ## set random number generating seed for reproducability
 set.seed(1000)
@@ -46,6 +49,18 @@ dat_all <- per_all + wn
 # find annual maxima from the pseudodata
 dat_m <- matrix(dat_all, nrow=365)
 dat <- apply(dat_m, 2, max)
+
+# plot pseudodata
+dat_fig <- ggplot(data.frame(Year=1:dat_len, Observation=dat)) + 
+  geom_point(aes(x=Year, y=Observation), shape=4) + 
+  scale_y_continuous('Maximum Observed Data') +
+  theme_classic(base_size=12)
+pdf('maxdat.pdf', height=3.5, width=3.5)
+dat_fig
+dev.off()
+png('maxdat.png', height=3.5, width=3.5, units='in', dpi=300)
+dat_fig
+dev.off()
 
 ## set vector of parameter names
 parnames_all <- c('loc', 'loc1', 'loc2', 'scale', 'scale1', 'scale2', 'shape')
@@ -87,16 +102,22 @@ for (m in models) {
   mcmc_all[[m]] <- mcmc_out[[m]]$samples[idx,] 
 }  
 
+saveRDS(mcmc_all, 'output/mcmc_out.rds')
+
 np <- list('st'=3, 'nsloc'=4, 'nslocscale'=5) # we need the number of parameters for AIC and BIC
 
 ## compute model selection metrics
-# Divide AIC and BIC by 2 to make them comparable to LOO-CV, as opposed to on the deviance scale
-aic_all <- mapply(aic, mle_ll = mle_all, np = np) / 2
-bic_all <- mapply(bic, mle_ll = mle_all, np=np, dat_len=length(dat)) / 2
+aic_all <- mapply(aic, mle_ll = mle_all, np = np) 
+bic_all <- mapply(bic, mle_ll = mle_all, np=np, dat_len=length(dat)) 
 waic_all <- unlist(lapply(mcmc_all, waic, dat=dat, lik_fun='log_lik_gev'))
 isloo_all <- unlist(lapply(mcmc_all, imp_loo, dat=dat, lik_fun='log_lik_gev'))
 psloo_all <- unlist(lapply(mcmc_all, ps_loo, dat=dat, lik_fun='log_lik_gev'))
+# load exact LOO for comparison if desired
+if (loo_comp) {
+loo_out <- readRDS(paste0('output/loo_exact.rds'))
+loo_all <- colSums(loo_out)
+}
 
 # combine into a table
-metrics <- data.frame('AIC'=aic_all, 'BIC'=bic_all, 'WAIC'=waic_all, 'IS-LOO'=isloo_all, 'PS-LOO'=psloo_all)
+metrics <- data.frame('LOO'=loo_all, 'AIC'=aic_all, 'BIC'=bic_all, 'WAIC'=waic_all, 'IS-LOO'=isloo_all, 'PS-LOO'=psloo_all)
 print(metrics)
