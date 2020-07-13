@@ -1,0 +1,16 @@
+# This is an environment for working with R and RStudio
+# note that custom packages can still be installed using
+# install.packages(). This setup provides a set of core
+# packages, including those with complex dependencies
+# that install.packages() may not be able to find easily
+name: rdata
+channels:
+  - r
+  - conda-forge
+  - defaults
+dependencies:
+  - r-base # base r
+  - r-essentials # basic packages
+  - r-ggthemes # more colors and themes
+  - r-rstan # bayesian stats
+  - rstudio # use RStudio
